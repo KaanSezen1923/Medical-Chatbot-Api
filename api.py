@@ -1,5 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, Form, Request, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 import base64
 import requests
 import io
@@ -9,16 +10,21 @@ import os
 import logging
 import uvicorn
 
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 
 load_dotenv()
 
 app = FastAPI()
 
-
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for testing; replace with specific origins in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions"
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
@@ -46,7 +52,6 @@ async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)
             logger.error(f"Invalid image format: {str(e)}")
             raise HTTPException(status_code=400, detail=f"Invalid image format: {str(e)}")
 
-
         messages = [
             {
                 "role": "user",
@@ -55,7 +60,6 @@ async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)
                     {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
                 ],
             },
-
         ]
 
         def make_api_request(model):
@@ -74,11 +78,8 @@ async def upload_and_query(image: UploadFile = File(...), query: str = Form(...)
             )
             return response
 
-        
         llama_response = make_api_request("meta-llama/llama-4-scout-17b-16e-instruct")
        
-
-        
         responses = {}
         for model, response in [("llama", llama_response)]:
             if response.status_code == 200:
